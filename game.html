@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>GAME</title>
+</head>
+<body>
+
+
+</br>
+<button type="button" id="init" class="basic">initiate</button>
+<button type="button" id="hard" class="basic">hardmode</button>
+<!-- possible future feature
+<button type="button" onclick = "local = text.EN">ENGLISH</button>
+<button type="button" onclick = "local = text.ZH">中文</button>
+-->
+
+<h2 id="introduction"></h2>
+
+<div id = "gameboard">
+	</br>
+</div>
+
+<h3 id="click"></h3>
+<h3 id="records"></h3>
+
+<h1 id="victory"></h1>
+
+<h3 id="restart"></h3>
+
+
+
+<style>
+.basic {
+  background-color: #DDDDDD;
+  padding: 32px 32px;
+  font-size: 24px;
+}
+
+.set2 {
+  background-color: #008CBA;
+  padding: 20px 20px;
+}
+
+.set1 {
+  background-color: #f44336;
+  padding: 20px 20px;
+}
+</style>
+
+<script>
+
+// localization
+const text = {
+	EN: {
+		intro: "Click the buttons to toggle them. When all buttons of the same color are connected together, you win. Use as few clicks as possible!",
+		initiate: "Initiate Game",
+		hard: "Hard Mode",
+		restart: "Restart Game",
+		clicks: "Number of clicks: ",
+		records: "Best Record: ",
+		victory: "Congratulations, you win! ",
+		restart_prompt: "Please press Restart Game"
+	},
+	ZH: {
+		intro: "点击按钮以改变其颜色。当所有同色的按钮连在一起时，游戏胜利。点击次数越少，你的技术越好！",
+		initiate: "新建游戏",
+		hard: "困难模式",
+		restart: "重新开始",
+		clicks: "点击次数：",
+		records: "最佳纪录：",
+		victory: "胜利！",
+		restart_prompt: "请点击重新开始"
+	}
+};
+
+var local = text.ZH;
+
+
+// initiate button
+var initiater = document.getElementById("init");
+initiater.innerHTML = local.initiate;
+initiater.addEventListener("click", 
+	function(){
+		initiateGame(8, 8)
+	}
+);
+
+var hardmode = document.getElementById("hard");
+hardmode.innerHTML = local.hard;
+hardmode.addEventListener("click", 
+	function(){
+		initiateGame(12, 12);
+	}
+);
+
+// put intro on the screen
+document.getElementById("introduction").innerHTML = local.intro;
+
+
+
+
+//===============================
+
+// gameboard variables
+var buttons = new Array();
+var clicks = 0;
+var row;
+var col;
+var set1All = new Array();
+var set2All = new Array();
+
+// initiate game
+function initiateGame(r, c){
+
+	row = r;
+	col = c;
+	
+	for(var i = 0; i < col; i++){
+		buttons[i] = new Array();
+		for(var j = 0; j < row; j++){
+			var signal = randomSignal();
+			
+			// create buttons on the board
+			var node = document.createElement("button");
+			// button index 
+			node.x = j;
+			node.y = i;
+			
+			// button color
+			if (signal == 1){
+				node.setAttribute("class", "set1");
+				set1All.push(node);
+			}else{
+				node.setAttribute("class", "set2");
+				set2All.push(node);
+			}
+			
+			// button onclick
+			node.addEventListener("click", buttonClicked)
+			
+			
+			// roll out
+			document.getElementById("gameboard").appendChild(node);
+			buttons[i][j] = node;
+			
+			// connect adjacent nodes
+			if (j>0) {
+				node.left = buttons[i][j-1]
+				node.left.right = node
+			}
+			if (i>0) {
+				node.top = buttons[i-1][j]
+				node.top.bottom = node
+			}
+			
+		}
+		var breaker = document.createElement("br");
+		document.getElementById("gameboard").appendChild(breaker)
+		
+	}
+	
+	//display clicks on the screen
+	document.getElementById("click").innerHTML = local.clicks + clicks;
+	
+	//change the initiater to restart game
+	initiater.removeEventListener("click", initiateGame);
+	initiater.innerHTML = local.restart;
+	initiater.addEventListener("click", function(){location.reload()});
+	//remove the hardmode button
+	hardmode.remove()
+}
+
+function randomSignal(){
+	if (Math.random() >= 0.5){
+		return 1;
+	}else{
+		return 0;
+	}
+}
+
+function buttonClicked(){
+	//toggle button color
+	if (this.getAttribute("class") == "set1"){
+		this.setAttribute("class", "set2");
+		set1All.splice(set1All.indexOf(this), 1);
+		set2All.push(this)
+	}else{
+		this.setAttribute("class", "set1");
+		set2All.splice(set2All.indexOf(this), 1);
+		set1All.push(this)
+	}
+	
+	//update click number
+	clicks = clicks + 1;
+	document.getElementById("click").innerHTML = local.clicks + clicks;
+	
+	frame();
+}
+
+function frame(){
+	
+	// check win condition
+	//var owners = new Array();
+	
+	//loop thru buttons array, create sets
+	for(var i = 0; i < col; i++){
+		for(var j = 0; j < row; j++){
+			var s = new Set();
+			buttons[i][j].owner = s;
+			s.add(buttons[i][j])
+			//owners.push(s);
+		}
+	}
+	
+	var vcount = 0
+	
+	// check and combine sets, red
+	var family = set1All;
+	for (var i = 0; i < family.length; i++){
+		var b1 = family[i];
+		
+		//left
+		if (! (typeof b1.left === 'undefined')){
+			if (family.includes(b1.left)){ //same color
+				sn = union(b1.owner, b1.left.owner);
+				for (let elm of sn) {
+					elm.owner = sn;
+				}
+				//console.log(b1.x + " " + b1.y +" combined " + b1.left.x + " " + b1.left.y + " red");
+				//console.log(sn.size);
+			}
+		}
+		
+		//right
+		if (! (typeof b1.right === 'undefined')){
+			if (family.includes(b1.right)){ //same color
+				sn = union(b1.owner, b1.right.owner);
+				for (let elm of sn) {
+					elm.owner = sn;
+				}
+				//console.log(b1.x + " " + b1.y +" combined " + b1.right.x + " " + b1.right.y + " red")
+				//console.log(sn.size)
+			}
+		}
+		
+		//top
+		if (! (typeof b1.top === 'undefined')){
+			if (family.includes(b1.top)){ //same color
+				sn = union(b1.owner, b1.top.owner);
+				for (let elm of sn) {
+					elm.owner = sn;
+				}
+				//console.log(b1.x + " " + b1.y +" combined " + b1.top.x + " " + b1.top.y + " red")
+				//console.log(sn.size)
+			}
+		}
+		
+		//bottom
+		if (! (typeof b1.bottom === 'undefined')){
+			if (family.includes(b1.bottom)){ //same color
+				sn = union(b1.owner, b1.bottom.owner);
+				for (let elm of sn) {
+					elm.owner = sn;
+				}
+				//console.log(b1.x + " " + b1.y +" combined " + b1.bottom.x + " " + b1.bottom.y + " red")
+				//console.log(sn.size)
+			}
+		}
+	}
+	
+	//repeat for blue
+	family = set2All;
+	for (var i = 0; i < family.length; i++){
+		var b1 = family[i];
+		
+		//left
+		if (! (typeof b1.left === 'undefined')){
+			if (family.includes(b1.left)){ //same color
+				sn = union(b1.owner, b1.left.owner);
+				for (let elm of sn) {
+					elm.owner = sn;
+				}
+				//console.log(b1.x + " " + b1.y +" combined " + b1.left.x + " " + b1.left.y + " blue");
+				//console.log(sn.size)
+			}
+		}
+		
+		//right
+		if (! (typeof b1.right === 'undefined')){
+			if (family.includes(b1.right)){ //same color
+				sn = union(b1.owner, b1.right.owner);
+				for (let elm of sn) {
+					elm.owner = sn;
+				}
+				//console.log(b1.x + " " + b1.y +" combined " + b1.right.x + " " + b1.right.y + " blue")
+				//console.log(sn.size)
+			}
+		}
+		
+		//top
+		if (! (typeof b1.top === 'undefined')){
+			if (family.includes(b1.top)){ //same color
+				sn = union(b1.owner, b1.top.owner);
+				for (let elm of sn) {
+					elm.owner = sn;
+				}
+				//console.log(b1.x + " " + b1.y +" combined " + b1.top.x + " " + b1.top.y + " blue")
+				//console.log(sn.size)
+			}
+		}
+		
+		//bottom
+		if (! (typeof b1.bottom === 'undefined')){
+			if (family.includes(b1.bottom)){ //same color
+				sn = union(b1.owner, b1.bottom.owner);
+				for (let elm of sn) {
+					elm.owner = sn;
+				}
+				//console.log(b1.x + " " + b1.y +" combined " + b1.bottom.x + " " + b1.bottom.y + " blue")
+				//console.log(sn.size)
+			}
+		}
+	}
+	
+	
+	if (set1All.length == set1All[0].owner.size){
+		if(set2All.length == set2All[0].owner.size){
+			//victory
+			victory();
+		}
+	}
+
+}
+
+// triggered when wins
+function victory(){
+	//put message
+	document.getElementById("victory").innerHTML = local.victory + local.clicks + clicks;
+	document.getElementById("click").remove();
+	
+
+	//disable buttons
+	for(var i = 0; i < col; i++){
+		for(var j = 0; j < row; j++){
+			buttons[i][j].removeEventListener("click", buttonClicked);
+		}
+	}
+	
+	//message to restart
+	document.getElementById("restart").innerHTML = local.restart_prompt;
+
+}
+
+
+//set union function
+//returns the unioned set
+function union(setA, setB) {
+    let _union = new Set(setA)
+    for (let elem of setB) {
+        _union.add(elem)
+    }
+    return _union
+}
+
+
+</script>
+
+
+
+</body>
+</html>
