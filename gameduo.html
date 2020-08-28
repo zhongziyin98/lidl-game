@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>GAME</title>
+</head>
+<body>
+
+
+</br>
+<button type="button" id="init" class="basic">initiate</button>
+<button type="button" id="hard" class="basic">hardmode</button>
+<!-- possible future feature
+<button type="button" onclick = "local = text.EN">ENGLISH</button>
+<button type="button" onclick = "local = text.ZH">中文</button>
+-->
+
+<h2 id="introduction"></h2>
+
+<h2 id="turn"></h2>
+
+<h2 id="victory"></h2>
+<h2 id="restart"></h2>
+
+<div id = "gameboard">
+	</br>
+</div>
+
+
+
+
+
+<style>
+.basic {
+  background-color: #DDDDDD;
+  padding: 32px 32px;
+  font-size: 24px;
+}
+
+.set2 {
+  background-color: #008CBA;
+  padding: 32px 32px;
+}
+
+.set1 {
+  background-color: #f44336;
+  padding: 32px 32px;
+}
+
+.player1 {
+  color: #f44336;
+}
+
+.player2 {
+  color: #008CBA;
+}
+
+
+</style>
+
+<script>
+
+// localization
+const text = {
+	EN: {
+		intro: "This is a 2-players game. On turn 1, a player may click a button opponent owns to turn it into theirs. </br>A player may not click a button that is just clicked. </br> When a player has all their button connected, that player wins. ",
+		initiate: "Initiate Game",
+		turn: ["Red's turn, please click a blue button", "Blue's turn, please click a red button"],
+		restart: "Restart Game",
+		records: "Best Record: ",
+		victory: ["Red wins! ", "Blue wins!"],
+		restart_prompt: "Please press Restart Game"
+	},
+	ZH: {
+		intro: "本游戏需要两名玩家。玩家可以点击对手的按钮来转换其颜色。</br>不能点击刚刚被点过的按钮。</br>当一位玩家的所有按钮都连在一起时，该玩家获胜。",
+		initiate: "新建游戏",
+		turn: ["红方的回合，请点击一个蓝色按钮", "蓝方的回合，请点击一个红色按钮"],
+		restart: "重新开始",
+		records: "最佳纪录：",
+		victory: ["红方胜利！", "蓝方胜利！"],
+		restart_prompt: "请点击重新开始"
+	}
+};
+
+var local = text.ZH;
+
+
+// initiate button
+var initiater = document.getElementById("init");
+initiater.innerHTML = local.initiate + " 4*4";
+initiater.addEventListener("click", 
+	function(){
+		initiateGame(4, 4)
+	}
+);
+
+var hard = document.getElementById("hard");
+hard.innerHTML = local.initiate + " 8*8";
+hard.addEventListener("click", 
+	function(){
+		initiateGame(8, 8)
+	}
+);
+
+// put intro on the screen
+document.getElementById("introduction").innerHTML = local.intro;
+
+
+
+
+//===============================
+
+// gameboard variables
+var buttons = new Array();
+var row;
+var col;
+var set1All = new Array();
+var set2All = new Array();
+
+var turn = 1; //1 or 2 only; p1=red, p2=blue
+
+// initiate game
+function initiateGame(r, c){
+
+	row = r;
+	col = c;
+	
+	for(var i = 0; i < col; i++){
+		buttons[i] = new Array();
+		for(var j = 0; j < row; j++){
+			var signal = (i+j)%2;
+			
+			// create buttons on the board
+			var node = document.createElement("button");
+			// button index 
+			node.x = j;
+			node.y = i;
+			
+			// button color
+			if (signal == 1){ //red
+				node.setAttribute("class", "set1");
+				set1All.push(node);
+			}else{
+				node.setAttribute("class", "set2");
+				set2All.push(node);
+				// button onclick
+				// blue buttons are clickable on turn 1
+				node.addEventListener("click", buttonClicked);
+			}
+			
+			
+			
+			
+			// roll out
+			document.getElementById("gameboard").appendChild(node);
+			buttons[i][j] = node;
+			
+			// connect adjacent nodes
+			if (j>0) {
+				node.left = buttons[i][j-1]
+				node.left.right = node
+			}
+			if (i>0) {
+				node.top = buttons[i-1][j]
+				node.top.bottom = node
+			}
+			
+		}
+		var breaker = document.createElement("br");
+		document.getElementById("gameboard").appendChild(breaker);
+		
+		//team red starts
+		turn = 1;
+		document.getElementById("turn").innerHTML = local.turn[0];
+		
+	}
+	
+	
+	//change the initiater to restart game
+	initiater.removeEventListener("click", initiateGame);
+	initiater.innerHTML = local.restart;
+	initiater.addEventListener("click", function(){location.reload()});
+	hard.remove()
+}
+
+/*
+function randomSignal(){ // not used
+	if (Math.random() >= 0.5){
+		return 1;
+	}else{
+		return 0;
+	}
+}
+*/
+
+function buttonClicked(){
+	//toggle button color
+	if (this.getAttribute("class") == "set1"){ //red
+		this.setAttribute("class", "set2");
+		
+		//remove all listeners
+		for (let elm of set1All) {
+			elm.removeEventListener("click", buttonClicked);
+		}
+		//put the clicked button into the other set
+		set1All.splice(set1All.indexOf(this), 1);
+		
+		//add listeners to another class
+		for (let elm of set2All) {
+			elm.addEventListener("click", buttonClicked);
+		}
+		//but not to the button just clicked
+		set2All.push(this);
+		
+	}else{ //blue
+		this.setAttribute("class", "set1");
+		
+		for (let elm of set2All) {
+			elm.removeEventListener("click", buttonClicked);
+		}
+		set2All.splice(set2All.indexOf(this), 1);
+		for (let elm of set1All) {
+			elm.addEventListener("click", buttonClicked);
+		}
+		set1All.push(this);
+	}
+	
+	// go to the other player's turn
+	turn = 3-turn;
+	document.getElementById("turn").innerHTML = local.turn[turn-1];
+	
+	frame();
+}
+
+function frame(){
+	
+	// check win condition
+	//var owners = new Array();
+	
+	//loop thru buttons array, create sets
+	for(var i = 0; i < col; i++){
+		for(var j = 0; j < row; j++){
+			var s = new Set();
+			buttons[i][j].owner = s;
+			s.add(buttons[i][j])
+			//owners.push(s);
+		}
+	}
+	
+	var vcount = 0
+	var family;
+	// check and combine sets
+	if (turn == 2){//red took turn, check red
+		family = set1All;
+	}else{
+		family = set2All;
+	}
+	
+	for (var i = 0; i < family.length; i++){
+		var b1 = family[i];
+		
+		//left
+		if (! (typeof b1.left === 'undefined')){
+			if (family.includes(b1.left)){ //same color
+				sn = union(b1.owner, b1.left.owner);
+				for (let elm of sn) {
+					elm.owner = sn;
+				}
+				//console.log(b1.x + " " + b1.y +" combined " + b1.left.x + " " + b1.left.y + " red");
+				//console.log(sn.size);
+			}
+		}
+		
+		//right
+		if (! (typeof b1.right === 'undefined')){
+			if (family.includes(b1.right)){ //same color
+				sn = union(b1.owner, b1.right.owner);
+				for (let elm of sn) {
+					elm.owner = sn;
+				}
+				//console.log(b1.x + " " + b1.y +" combined " + b1.right.x + " " + b1.right.y + " red")
+				//console.log(sn.size)
+			}
+		}
+		
+		//top
+		if (! (typeof b1.top === 'undefined')){
+			if (family.includes(b1.top)){ //same color
+				sn = union(b1.owner, b1.top.owner);
+				for (let elm of sn) {
+					elm.owner = sn;
+				}
+				//console.log(b1.x + " " + b1.y +" combined " + b1.top.x + " " + b1.top.y + " red")
+				//console.log(sn.size)
+			}
+		}
+		
+		//bottom
+		if (! (typeof b1.bottom === 'undefined')){
+			if (family.includes(b1.bottom)){ //same color
+				sn = union(b1.owner, b1.bottom.owner);
+				for (let elm of sn) {
+					elm.owner = sn;
+				}
+				//console.log(b1.x + " " + b1.y +" combined " + b1.bottom.x + " " + b1.bottom.y + " red")
+				//console.log(sn.size)
+			}
+		}
+	}
+	
+	//victory
+	if(family.length == family[0].owner.size){
+		//the player who moved last turn wins
+		victory(3-turn);
+	}
+
+
+}
+
+// triggered when wins
+function victory(winner){
+	//put message
+	document.getElementById("victory").innerHTML = local.victory[winner-1];
+	document.getElementById("victory").setAttribute("class", "player" + winner);
+	
+
+	//disable buttons
+	for(var i = 0; i < col; i++){
+		for(var j = 0; j < row; j++){
+			buttons[i][j].removeEventListener("click", buttonClicked);
+		}
+	}
+	
+	//message to restart
+	document.getElementById("restart").innerHTML = local.restart_prompt;
+
+}
+
+
+//set union function
+//returns the unioned set
+function union(setA, setB) {
+    let _union = new Set(setA)
+    for (let elem of setB) {
+        _union.add(elem)
+    }
+    return _union
+}
+
+
+</script>
+
+
+
+</body>
+</html>
